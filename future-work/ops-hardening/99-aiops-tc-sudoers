@@ -1,0 +1,20 @@
+# Install to /etc/sudoers.d/99-aiops-tc (chmod 440, visudo -c to validate).
+#
+# Grants the service account running dashboard.py / ml_anomaly_detector.py
+# passwordless sudo for EXACTLY this one script with EXACTLY these argument
+# patterns — not blanket `sudo tc`/`sudo iptables`, and not arbitrary shell.
+#
+# Replace `aiops` with whatever system user actually runs those processes.
+
+aiops ALL=(root) NOPASSWD: /usr/local/sbin/secure_tc_helper.sh embb inject-latency, \
+                            /usr/local/sbin/secure_tc_helper.sh embb inject-loss, \
+                            /usr/local/sbin/secure_tc_helper.sh embb inject-congestion, \
+                            /usr/local/sbin/secure_tc_helper.sh embb heal, \
+                            /usr/local/sbin/secure_tc_helper.sh urllc inject-latency, \
+                            /usr/local/sbin/secure_tc_helper.sh urllc inject-loss, \
+                            /usr/local/sbin/secure_tc_helper.sh urllc inject-congestion, \
+                            /usr/local/sbin/secure_tc_helper.sh urllc heal, \
+                            /usr/local/sbin/secure_tc_helper.sh mmtc inject-latency, \
+                            /usr/local/sbin/secure_tc_helper.sh mmtc inject-loss, \
+                            /usr/local/sbin/secure_tc_helper.sh mmtc inject-congestion, \
+                            /usr/local/sbin/secure_tc_helper.sh mmtc heal

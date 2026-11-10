@@ -1,0 +1,104 @@
+# Open5GS control-plane NFs (NRF, AMF, SMF).
+#
+# Image note: `image: digital-twin/open5gs:latest` is built from the existing
+# `5g-network-slicing/Dockerfile.open5gs` on `main` and pushed to whatever
+# registry the cluster can pull from (`docker build -t digital-twin/open5gs:latest
+# -f 5g-network-slicing/Dockerfile.open5gs 5g-network-slicing/` then push/import
+# into K3s/Minikube). Config files are mounted from ConfigMaps instead of local
+# bind mounts, which is the only structural change from the docker-compose setup.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: open5gs-config
+  namespace: digital-twin
+data:
+  amf.yaml: |
+    # contents of 5g-network-slicing/config/open5gs-amf.yaml
+  smf.yaml: |
+    # contents of 5g-network-slicing/config/open5gs-smf.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open5gs-nrf
+  namespace: digital-twin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open5gs-nrf
+  template:
+    metadata:
+      labels:
+        app: open5gs-nrf
+    spec:
+      containers:
+        - name: nrf
+          image: digital-twin/open5gs:latest
+          command: ["open5gs-nrfd"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open5gs-nrf
+  namespace: digital-twin
+spec:
+  selector:
+    app: open5gs-nrf
+  ports:
+    - port: 7777
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open5gs-amf
+  namespace: digital-twin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open5gs-amf
+  template:
+    metadata:
+      labels:
+        app: open5gs-amf
+    spec:
+      containers:
+        - name: amf
+          image: digital-twin/open5gs:latest
+          command: ["open5gs-amfd", "-c", "/etc/open5gs/amf.yaml"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs
+      volumes:
+        - name: config
+          configMap:
+            name: open5gs-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open5gs-smf
+  namespace: digital-twin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open5gs-smf
+  template:
+    metadata:
+      labels:
+        app: open5gs-smf
+    spec:
+      containers:
+        - name: smf
+          image: digital-twin/open5gs:latest
+          command: ["open5gs-smfd", "-c", "/etc/open5gs/smf.yaml"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs
+      volumes:
+        - name: config
+          configMap:
+            name: open5gs-config

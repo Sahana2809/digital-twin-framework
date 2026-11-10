@@ -1,0 +1,100 @@
+# One Deployment per slice's UPF. `replicas` on the eMBB UPF is what
+# aiops_scaler.py adjusts in response to load — the URLLC and mMTC UPFs stay
+# fixed since scaling low-latency/massive-IoT user planes horizontally doesn't
+# solve a congestion problem the way adding eMBB capacity does.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open5gs-upf-embb
+  namespace: digital-twin
+  labels:
+    slice: embb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open5gs-upf-embb
+  template:
+    metadata:
+      labels:
+        app: open5gs-upf-embb
+        slice: embb
+    spec:
+      containers:
+        - name: upf
+          image: digital-twin/open5gs:latest
+          command: ["open5gs-upfd", "-c", "/etc/open5gs/upf.yaml"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs
+      volumes:
+        - name: config
+          configMap:
+            name: open5gs-upf1-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open5gs-upf-urllc
+  namespace: digital-twin
+  labels:
+    slice: urllc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open5gs-upf-urllc
+  template:
+    metadata:
+      labels:
+        app: open5gs-upf-urllc
+        slice: urllc
+    spec:
+      containers:
+        - name: upf
+          image: digital-twin/open5gs:latest
+          command: ["open5gs-upfd", "-c", "/etc/open5gs/upf.yaml"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs
+      volumes:
+        - name: config
+          configMap:
+            name: open5gs-upf2-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open5gs-upf-mmtc
+  namespace: digital-twin
+  labels:
+    slice: mmtc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open5gs-upf-mmtc
+  template:
+    metadata:
+      labels:
+        app: open5gs-upf-mmtc
+        slice: mmtc
+    spec:
+      containers:
+        - name: upf
+          image: digital-twin/open5gs:latest
+          command: ["open5gs-upfd", "-c", "/etc/open5gs/upf.yaml"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs
+      volumes:
+        - name: config
+          configMap:
+            name: open5gs-upf3-config
