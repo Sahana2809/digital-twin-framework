@@ -1,0 +1,18 @@
+upf:
+  pfcp:
+    server:
+      - address: 127.0.0.11
+  gtpu:
+    server:
+      - address: 127.0.0.11
+  session:
+    - subnet: 10.1.1.0/24
+      dev: ogstun1
+  metrics:
+    server:
+      - address: 127.0.0.11
+        port: 9091
+smf:
+  pfcp:
+    client:
+      - address: 127.0.0.4

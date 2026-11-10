@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    network_mode: host
+
+  nrf:
+    build: 
+      context: .
+      dockerfile: Dockerfile.open5gs
+    container_name: open5gs-nrf
+    command: open5gs-nrfd
+    depends_on:
+      - mongodb
+    network_mode: host
+
+  amf:
+    build: 
+      context: .
+      dockerfile: Dockerfile.open5gs
+    container_name: open5gs-amf
+    command: open5gs-amfd -c /etc/open5gs/amf.yaml
+    volumes:
+      - ./config/open5gs-amf.yaml:/etc/open5gs/amf.yaml
+    depends_on:
+      - nrf
+    network_mode: host
+
+  smf:
+    build: 
+      context: .
+      dockerfile: Dockerfile.open5gs
+    container_name: open5gs-smf
+    command: open5gs-smfd -c /etc/open5gs/smf.yaml
+    volumes:
+      - ./config/open5gs-smf.yaml:/etc/open5gs/smf.yaml
+    depends_on:
+      - nrf
+      - amf
+    network_mode: host
+
+  upf1-embb:
+    build: 
+      context: .
+      dockerfile: Dockerfile.open5gs
+    container_name: open5gs-upf1-embb
+    command: open5gs-upfd -c /etc/open5gs/upf.yaml
+    volumes:
+      - ./config/open5gs-upf1.yaml:/etc/open5gs/upf.yaml
+    privileged: true
+    network_mode: host
+    depends_on:
+      - smf
+
+  upf2-urllc:
+    build: 
+      context: .
+      dockerfile: Dockerfile.open5gs
+    container_name: open5gs-upf2-urllc
+    command: open5gs-upfd -c /etc/open5gs/upf.yaml
+    volumes:
+      - ./config/open5gs-upf2.yaml:/etc/open5gs/upf.yaml
+    privileged: true
+    network_mode: host
+    depends_on:
+      - smf
+
+  upf3-mmtc:
+    build: 
+      context: .
+      dockerfile: Dockerfile.open5gs
+    container_name: open5gs-upf3-mmtc
+    command: open5gs-upfd -c /etc/open5gs/upf.yaml
+    volumes:
+      - ./config/open5gs-upf3.yaml:/etc/open5gs/upf.yaml
+    privileged: true
+    network_mode: host
+    depends_on:
+      - smf

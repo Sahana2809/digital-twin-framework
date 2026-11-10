@@ -1,0 +1,18 @@
+upf:
+  pfcp:
+    server:
+      - address: 127.0.0.12
+  gtpu:
+    server:
+      - address: 127.0.0.12
+  session:
+    - subnet: 10.2.1.0/24
+      dev: ogstun2
+  metrics:
+    server:
+      - address: 127.0.0.12
+        port: 9092
+smf:
+  pfcp:
+    client:
+      - address: 127.0.0.4

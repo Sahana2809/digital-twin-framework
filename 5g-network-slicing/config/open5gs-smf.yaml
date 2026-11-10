@@ -1,0 +1,37 @@
+smf:
+  sbi:
+    server:
+      - address: 127.0.0.4
+        port: 7777
+  pfcp:
+    server:
+      - address: 127.0.0.4
+    client:
+      upf:
+        - address: 127.0.0.11 # UPF1 (eMBB)
+        - address: 127.0.0.12 # UPF2 (URLLC)
+        - address: 127.0.0.13 # UPF3 (mMTC)
+  metrics:
+    server:
+      - address: 127.0.0.4
+        port: 9090
+  subnet:
+    - addr: 10.45.1.1/16
+      dnn: internet
+      snssai:
+        sst: 1
+        sd: 000001
+    - addr: 10.45.2.1/16
+      dnn: internet
+      snssai:
+        sst: 2
+        sd: 000002
+    - addr: 10.45.3.1/16
+      dnn: internet
+      snssai:
+        sst: 3
+        sd: 000003
+nrf:
+  sbi:
+    - address: 127.0.0.10
+      port: 7777

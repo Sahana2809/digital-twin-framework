@@ -1,0 +1,7 @@
+prometheus_client
+scikit-learn
+pandas
+streamlit
+requests
+
+
