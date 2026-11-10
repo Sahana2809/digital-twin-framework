@@ -8,38 +8,40 @@ It combines three disciplines in one pipeline:
 - **Machine learning** — a Random Forest classifier trained to recognize slice-specific failure signatures
 - **Full-stack development** — a live Streamlit/Plotly command center for monitoring and fault injection
 
-<p align="center">
-  <img src="5g-network-slicing/report_graphs/confusion_matrix.png" width="30%" />
-  <img src="5g-network-slicing/report_graphs/feature_importance.png" width="30%" />
-  <img src="5g-network-slicing/report_graphs/chaos_recovery_timeline.png" width="30%" />
-</p>
+![Confusion matrix of the slice-anomaly classifier](5g-network-slicing/report_graphs/confusion_matrix.png)
+![Feature importance of the trained model](5g-network-slicing/report_graphs/feature_importance.png)
+![Chaos injection and recovery timeline](5g-network-slicing/report_graphs/chaos_recovery_timeline.png)
 
 ---
 
 ## How it works
 
 ### 1. 5G Core & Network Slicing
+
 A fully containerized **Open5GS** control plane (NRF, AMF, SMF) and user plane (UPF) are deployed as isolated Docker services (`docker-compose.yml`, `Dockerfile.open5gs`), backed by MongoDB for subscriber state and Prometheus for metrics.
 
 Three dedicated UPF containers provide true traffic isolation across the three standard 5G slice types:
 
-| Slice | Type | Use case |
-|---|---|---|
-| `upf1-embb` | Enhanced Mobile Broadband | High-throughput campus applications |
-| `upf2-urllc` | Ultra-Reliable Low-Latency Comms | Critical robotics / control systems |
-| `upf3-mmtc` | Massive Machine-Type Comms | Dense IoT sensor arrays |
+| Slice        | Type                              | Use case                             |
+| ------------ | ---------------------------------- | ------------------------------------- |
+| `upf1-embb`  | Enhanced Mobile Broadband          | High-throughput campus applications   |
+| `upf2-urllc` | Ultra-Reliable Low-Latency Comms   | Critical robotics / control systems   |
+| `upf3-mmtc`  | Massive Machine-Type Comms         | Dense IoT sensor arrays               |
 
 ### 2. The Digital Twin (Linux Network Emulation)
+
 Instead of a pure software simulator, `scripts/setup_network.sh` builds a kernel-level replica of the physical campus devices:
 
 - **Network namespaces** (`ip netns`) create three isolated virtual UEs — `ue_embb`, `ue_urllc`, `ue_mmtc`.
 - **Policy-based routing** (`ip rule` + dedicated routing tables + `iptables` MASQUERADE) forces each namespace's traffic through its own UPF tunnel (`ogstunN`), so, for example, IoT traffic can never physically route through the robotics slice.
 
 ### 3. Chaos Engineering & Telemetry
+
 - **Fault injection** uses the Linux `tc` utility directly against each namespace's `veth` interface — `netem delay` for latency spikes, `netem loss` for packet drops, and `tbf` for bandwidth throttling/congestion.
 - **Telemetry generation** (`src/traffic_generator.py`) runs a Python daemon per slice that pings a real external endpoint from inside each namespace to measure genuine latency and packet loss, blends in synthetic throughput/UE-count data, and exports everything as Prometheus metrics (`throughput_mbps`, `latency_ms`, `packet_loss_pct`, `active_ues`) every 2 seconds.
 
 ### 4. AIOps & Autonomous Closed-Loop Healing
+
 `src/ml_anomaly_detector.py` is the brains of the system:
 
 - A **Random Forest Classifier** (Scikit-Learn) is trained on synthetic data representing normal baselines plus three labeled failure signatures — eMBB congestion, URLLC latency spikes, and mMTC packet-drop dropouts.
@@ -47,6 +49,7 @@ Instead of a pure software simulator, `scripts/setup_network.sh` builds a kernel
 - On detecting an anomaly, it triggers **zero-touch remediation** — a `subprocess` call runs `tc qdisc del` inside the affected namespace, clearing the faulty rule and restoring normal operation in seconds, with every action logged to `alerts.log`.
 
 ### 5. Command & Control Dashboard
+
 `src/dashboard.py` is a **Streamlit** app that puts a human-friendly face on the whole system:
 
 - Live, auto-refreshing **Plotly** charts of throughput and latency per slice.
@@ -57,7 +60,7 @@ Instead of a pure software simulator, `scripts/setup_network.sh` builds a kernel
 
 ## Project structure
 
-```
+```text
 5g-network-slicing/
 ├── docker-compose.yml          # Open5GS core (NRF, AMF, SMF, 3x UPF) + MongoDB + Prometheus
 ├── Dockerfile.open5gs          # Open5GS build image
@@ -99,3 +102,19 @@ streamlit run src/dashboard.py
 ```
 
 Prometheus is available at `http://localhost:9090`; the dashboard opens at `http://localhost:8501`.
+
+---
+
+## Future work: real-world hardening roadmap
+
+`main` is a clean, working lab demo. It intentionally stays that way — a separate branch, **[`future-work/real-world-roadmap`](https://github.com/Sahana2809/digital-twin-framework/tree/future-work/real-world-roadmap)**, explores what it would take to harden this into something closer to a real deployment, and is **never merged back into `main`**.
+
+That branch covers:
+
+- **Cloud-native orchestration** — migrating Open5GS to Kubernetes, with an AIOps scaler that scales UPF Deployments on load instead of just clearing `tc` rules.
+- **Predictive AI** — a PyTorch LSTM that forecasts an anomaly a few seconds before it breaches, instead of reacting after the fact.
+- **Physical edge integration** — bridging a real ESP32 sensor node over MQTT into the mMTC slice, so the "IoT traffic" is real hardware, not a synthetic ping.
+- **Operational hardening** — verify-and-escalate healing, persistent alert storage in the already-deployed MongoDB, model versioning, and a sudoers-constrained helper replacing raw `shell=True sudo` calls.
+- **Multi-host realism** — a design note on splitting the RAN/edge side from the Core across real hosts.
+
+See [`future-work/README.md`](https://github.com/Sahana2809/digital-twin-framework/blob/future-work/real-world-roadmap/future-work/README.md) on that branch for the full writeup of each idea, what's actually implemented versus design-only, and why.
